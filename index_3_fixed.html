@@ -1,0 +1,2901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock In/Out - Time Tracking System</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js">
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #e0e7ff;
+            --success: #10b981;
+            --success-dark: #059669;
+            --success-light: #d1fae5;
+            --danger: #ef4444;
+            --danger-light: #fee2e2;
+            --warning: #f59e0b;
+            --warning-light: #fef3c7;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
+            --transition: 0.2s ease;
+            --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background: linear-gradient(135deg, #f0f4ff 0%, #fdf2f8 100%);
+            min-height: 100vh;
+            color: var(--gray-800);
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .app-header {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px 28px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            border: 1px solid var(--gray-100);
+        }
+        .app-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .app-header .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            flex-shrink: 0;
+        }
+        .app-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            letter-spacing: -0.02em;
+        }
+        .app-header .subtitle {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font);
+            letter-spacing: 0.01em;
+            text-decoration: none;
+            line-height: 1.2;
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+        }
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: var(--success-dark);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+        }
+        .btn-outline {
+            background: white;
+            color: var(--gray-700);
+            border: 1.5px solid var(--gray-300);
+        }
+        .btn-outline:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+        .btn-sm {
+            padding: 7px 12px;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+        .btn-lg {
+            padding: 14px 24px;
+            font-size: 1rem;
+            border-radius: 10px;
+        }
+        .btn-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--gray-100);
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--gray-600);
+            font-family: var(--font);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+            min-width: 140px;
+        }
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.7);
+            color: var(--gray-800);
+        }
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Dashboard */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .employee-card {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .employee-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-2px);
+        }
+        .employee-card .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .employee-card .emp-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            word-break: break-word;
+        }
+        .employee-card .emp-status {
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-working {
+            background: var(--success-light);
+            color: var(--success-dark);
+        }
+        .status-idle {
+            background: var(--gray-100);
+            color: var(--gray-500);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+        .status-working .status-dot {
+            background: var(--success);
+        }
+        .status-idle .status-dot {
+            background: var(--gray-400);
+            animation: none;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+        .employee-card .today-info {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            margin-top: 4px;
+        }
+        .employee-card .delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0.4;
+            transition: var(--transition);
+            color: var(--gray-400);
+            padding: 4px;
+            border-radius: 4px;
+            line-height: 1;
+        }
+        .employee-card .delete-btn:hover {
+            opacity: 1;
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        /* Add Employee */
+        .add-employee-panel {
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 28px;
+            max-width: 500px;
+            margin: 0 auto;
+            border: 1px solid var(--gray-100);
+        }
+        .add-employee-panel h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--gray-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            margin-bottom: 6px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-family: var(--font);
+            transition: var(--transition);
+            outline: none;
+            color: var(--gray-800);
+            background: var(--gray-50);
+        }
+        .form-group input:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        }
+        .employee-list-mini {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .employee-tag {
+            background: var(--gray-100);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .employee-tag:hover {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+        .employee-tag .remove-x {
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            color: var(--gray-400);
+            line-height: 1;
+        }
+        .employee-tag:hover .remove-x {
+            color: var(--danger);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-overlay.closing {
+            animation: fadeOut 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 28px 24px;
+            animation: slideUp 0.25s ease;
+            position: relative;
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--gray-100);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-500);
+            transition: var(--transition);
+            line-height: 1;
+        }
+        .modal-close:hover {
+            background: var(--danger-light);
+            color: var(--danger);
+        }
+        .modal h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--gray-900);
+            text-align: center;
+        }
+        .modal .modal-subtitle {
+            text-align: center;
+            color: var(--gray-500);
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+        .modal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .modal-option-btn {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--gray-200);
+            background: white;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: var(--font);
+            text-align: left;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        .modal-option-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+        .modal-option-btn .opt-icon {
+            font-size: 1.5rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-100);
+            flex-shrink: 0;
+        }
+        .modal-option-btn:hover .opt-icon {
+            background: white;
+        }
+        .modal-option-btn .opt-text {
+            flex: 1;
+        }
+        .modal-option-btn .opt-text .opt-label {
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .modal-option-btn .opt-text .opt-desc {
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        /* Clock in/out display */
+        .clock-display {
+            text-align: center;
+            padding: 16px 0;
+        }
+        .clock-display .time {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            color: var(--gray-900);
+            font-variant-numeric: tabular-nums;
+        }
+        .clock-display .date {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            margin-bottom: 16px;
+        }
+        .clock-display .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        /* Weekly hours table */
+        .weekly-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 12px;
+        }
+        .weekly-table th,
+        .weekly-table td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .weekly-table th {
+            background: var(--gray-50);
+            font-weight: 700;
+            color: var(--gray-600);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .weekly-table tr:hover td {
+            background: var(--gray-50);
+        }
+        .weekly-table .sat-row td {
+            background: var(--warning-light);
+            color: #92400e;
+        }
+        .weekly-table .sun-row td {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+        .weekly-table .total-row td {
+            font-weight: 700;
+            background: var(--gray-100);
+            color: var(--gray-900);
+            border-top: 2px solid var(--gray-300);
+        }
+        .weekly-summary-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .summary-card {
+            padding: 14px;
+            border-radius: var(--radius-sm);
+            text-align: center;
+            font-weight: 600;
+        }
+        .summary-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .summary-card .value {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+        .summary-card.sat {
+            background: var(--warning-light);
+            color: #92400e;
+        }
+        .summary-card.sun {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+        }
+        .summary-card.total {
+            background: var(--success-light);
+            color: var(--success-dark);
+            grid-column: span 2;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-400);
+        }
+        .empty-state .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-lg);
+            animation: slideInRight 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 350px;
+        }
+        .toast.success {
+            background: var(--success);
+        }
+        .toast.error {
+            background: var(--danger);
+        }
+        .toast.info {
+            background: var(--primary);
+        }
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .toast.fade-out {
+            animation: fadeOut 0.3s ease forwards;
+        }
+
+        /* Big popup - for clock in/out confirmations that must be read and dismissed manually */
+        .big-popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.55);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+            cursor: pointer;
+        }
+        .big-popup-overlay.closing {
+            animation: fadeOut 0.2s ease;
+        }
+        .big-popup {
+            background: white;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 440px;
+            padding: 40px 32px;
+            text-align: center;
+            animation: slideUp 0.25s ease;
+            cursor: default;
+        }
+        .big-popup .big-popup-icon {
+            font-size: 3.5rem;
+            margin-bottom: 14px;
+            line-height: 1;
+        }
+        .big-popup .big-popup-message {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            line-height: 1.4;
+        }
+        .big-popup.success .big-popup-icon { color: var(--success); }
+        .big-popup.error .big-popup-icon { color: var(--danger); }
+        .big-popup.info .big-popup-icon { color: var(--primary); }
+        .big-popup .big-popup-hint {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* Confirm dialog */
+        .confirm-dialog .modal {
+            max-width: 380px;
+            text-align: center;
+        }
+        .confirm-dialog .confirm-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .app-header {
+                padding: 16px;
+                flex-direction: column;
+                text-align: center;
+            }
+            .app-header .logo {
+                justify-content: center;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: center;
+            }
+            .tabs {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .tab {
+                min-width: auto;
+                flex: 1;
+                padding: 10px 12px;
+                font-size: 0.8rem;
+            }
+            .dashboard-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+            .modal {
+                padding: 20px 16px;
+                max-width: 100%;
+            }
+            .clock-display .time {
+                font-size: 2rem;
+            }
+            .weekly-summary-cards {
+                grid-template-columns: 1fr;
+            }
+            .summary-card.total {
+                grid-column: span 1;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .app-header,
+            .tabs,
+            .modal-overlay,
+            .toast-container,
+            .delete-btn {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">⏱️</div>
+                <div>
+                    <h1>Time Clock</h1>
+                    <div class="subtitle" id="syncStatus">🔄 Connecting...</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="openExportModal()" title="Chọn ngày và nhân viên để export">
+                    📊 Export Excel
+                </button>
+                <button class="btn btn-primary" onclick="switchTab('add')">
+                    ➕ Add Employee
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" id="tab-dashboard" onclick="switchTab('dashboard')">
+                📋 Dashboard
+            </button>
+            <button class="tab" id="tab-add" onclick="switchTab('add')">
+                ➕ Add Employee
+            </button>
+            <button class="tab" id="tab-admin" onclick="switchTab('admin')">
+                🔐 Admin
+            </button>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard-section">
+            <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:8px;color:var(--gray-700);">
+                👥 Employees in Shop
+            </h2>
+            <p style="font-size:0.85rem;color:var(--gray-400);margin-bottom:8px;">
+                Click on an employee to see options
+            </p>
+            <div class="dashboard-grid" id="dashboardGrid">
+                <!-- populated by JS -->
+            </div>
+        </div>
+
+        <!-- Add Employee Section -->
+        <div id="add-section" style="display:none;">
+            <div class="add-employee-panel">
+                <h2>➕ Add New Employee</h2>
+                <form id="addEmployeeForm" onsubmit="handleAddEmployee(event)">
+                    <div class="form-group">
+                        <label for="empName">Employee Name</label>
+                        <input type="text" id="empName" placeholder="Enter employee name..." required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <label for="empRole">Role</label>
+                        <select id="empRole" style="width:100%;padding:10px;border:1px solid var(--gray-200);border-radius:8px;font-size:0.95rem;">
+                            <option value="staff">Staff</option>
+                            <option value="supervisor">Shift Supervisor</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">
+                        ➕ Add Employee
+                    </button>
+                </form>
+                <div style="margin-top:20px;">
+                    <p style="font-size:0.8rem;font-weight:700;color:var(--gray-500);margin-bottom:8px;">
+                        📋 EMPLOYEE LIST ({{employeeCount}})
+                    </p>
+                    <div class="employee-list-mini" id="employeeListMini">
+                        <!-- populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Section -->
+        <div id="admin-section" style="display:none;">
+            <div id="adminGate"></div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for Restore -->
+    <input type="file" id="restoreFileInput" accept="application/json" style="display:none;" onchange="handleRestoreFileSelected(event)">
+
+    <!-- Modal Container -->
+    <div id="modalContainer"></div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Big Popup Container (for clock in/out confirmations) -->
+    <div id="bigPopupContainer"></div>
+
+    <script>
+        // ===================== FIREBASE SETUP =====================
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4cgdOSreHQrMj0BpQkUetYPScJr0lQ1A",
+            authDomain: "banhmi-clockin-app.firebaseapp.com",
+            projectId: "banhmi-clockin-app",
+            storageBucket: "banhmi-clockin-app.firebasestorage.app",
+            messagingSenderId: "250569577442",
+            appId: "1:250569577442:web:3c5d4af989fd31bc909fbb"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const dataDocRef = db.collection('clockin').doc('shopData');
+        const settingsDocRef = db.collection('clockin').doc('settings');
+
+        // ===================== SETTINGS (rates, PIN, PH, revenue) =====================
+        const DEFAULT_RATES = {
+            staff: { weekday: 0, weekend: 0, publicHoliday: 0 },
+            supervisor: { weekday: 0, weekend: 0, publicHoliday: 0 },
+            manager: { weekday: 0, weekend: 0, publicHoliday: 0 }
+        };
+        let settingsCache = {
+            adminPin: '1234',
+            adminPin2: '021809',
+            rates: DEFAULT_RATES,
+            publicHolidays: [],
+            revenueEntries: []
+        };
+        let adminUnlocked = false;
+        let pendingAdminCallback = null;
+        let pendingAdmin2Callback = null;
+
+        function mergeRates(rates) {
+            rates = rates || {};
+            return {
+                staff: rates.staff || DEFAULT_RATES.staff,
+                supervisor: rates.supervisor || DEFAULT_RATES.supervisor,
+                manager: rates.manager || DEFAULT_RATES.manager
+            };
+        }
+
+        function saveSettings() {
+            settingsDocRef.set(settingsCache).catch(e => {
+                console.error('Settings save error:', e);
+                showToast('⚠️ Error saving settings', 'error');
+            });
+        }
+
+        settingsDocRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                const d = doc.data();
+                settingsCache = {
+                    adminPin: d.adminPin || '1234',
+                    adminPin2: d.adminPin2 || '021809',
+                    rates: mergeRates(d.rates),
+                    publicHolidays: Array.isArray(d.publicHolidays) ? d.publicHolidays : [],
+                    revenueEntries: Array.isArray(d.revenueEntries) ? d.revenueEntries : []
+                };
+            } else {
+                settingsDocRef.set(settingsCache).catch(e => console.error(e));
+            }
+            const gate = document.getElementById('adminGate');
+            const adminSection = document.getElementById('admin-section');
+            if (gate && adminSection && adminSection.style.display !== 'none') {
+                renderAdminSection();
+            }
+        }, (error) => console.error('Settings listen error:', error));
+
+        // ===================== DATA LAYER (Firestore, realtime sync) =====================
+        let employeesCache = [];
+        let firstLoadDone = false;
+        let isRemoteUpdate = false;
+
+        function loadData() {
+            return employeesCache;
+        }
+
+        function saveData(employees) {
+            employeesCache = employees;
+            isRemoteUpdate = true; // avoid double-render when our own write echoes back
+            dataDocRef.set({ employees: employees, updatedAt: Date.now() })
+                .catch(e => {
+                    console.error('Sync error:', e);
+                    showToast('⚠️ Sync error - check your network connection', 'error');
+                    setSyncStatus('offline');
+                });
+        }
+
+        function setSyncStatus(state) {
+            const el = document.getElementById('syncStatus');
+            if (!el) return;
+            if (state === 'online') el.textContent = '🟢 Synced';
+            else if (state === 'offline') el.textContent = '🔴 Disconnected';
+            else el.textContent = '🔄 Connecting...';
+        }
+
+        // Self-heal historical records: the Date column is the source of truth,
+        // so any record whose stored dayOfWeek doesn't match its date (caused by
+        // the old UTC/local timezone bug) gets recomputed here. Returns true if
+        // anything was fixed.
+        function repairDayOfWeek(employees) {
+            let changed = false;
+            (employees || []).forEach(emp => {
+                (emp.records || []).forEach(rec => {
+                    if (!rec.date) return;
+                    const correct = getDayOfWeek(rec.date);
+                    if (rec.dayOfWeek !== correct) {
+                        rec.dayOfWeek = correct;
+                        changed = true;
+                    }
+                });
+            });
+            return changed;
+        }
+
+        dataDocRef.onSnapshot((doc) => {
+            employeesCache = (doc.exists && Array.isArray(doc.data().employees)) ? doc.data().employees : [];
+            const wasRepaired = repairDayOfWeek(employeesCache);
+            setSyncStatus('online');
+            if (!firstLoadDone) {
+                firstLoadDone = true;
+                init();
+            } else if (!isRemoteUpdate) {
+                renderDashboard();
+                renderEmployeeListMini();
+            }
+            isRemoteUpdate = false;
+            const adminSection = document.getElementById('admin-section');
+            if (adminUnlocked && adminSection && adminSection.style.display !== 'none') {
+                if (document.getElementById('adminEmployeeList')) renderAdminEmployeeList();
+                if (document.getElementById('adminReportResult')) renderAdminReport();
+            }
+            // Persist the fix so every device/export sees corrected data, not
+            // just this session. Self-terminating: the next snapshot will find
+            // nothing left to repair.
+            if (wasRepaired) {
+                saveData(employeesCache);
+            }
+        }, (error) => {
+            console.error('Firestore listen error:', error);
+            setSyncStatus('offline');
+        });
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+
+        function getCurrentTime() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function getCurrentDate() {
+            // IMPORTANT: use LOCAL date parts, not toISOString() (which is UTC).
+            // Using UTC here caused the date to roll over ~9.5 hours early/late
+            // relative to Alice Springs local time (ACST, UTC+9:30), which is
+            // exactly what produced the Date/Day mismatches in exports.
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function getDayOfWeek(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+        }
+
+        function getDayName(dayOfWeek) {
+            const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            return names[dayOfWeek] || 'N/A';
+        }
+
+        function getShortDayName(dayOfWeek) {
+            const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            return names[dayOfWeek] || 'N/A';
+        }
+
+        function calculateMinutes(clockIn, clockOut) {
+            const [h1, m1, s1] = clockIn.split(':').map(Number);
+            const [h2, m2, s2] = clockOut.split(':').map(Number);
+            const total1 = h1 * 60 + m1 + s1 / 60;
+            const total2 = h2 * 60 + m2 + s2 / 60;
+            return Math.max(0, total2 - total1);
+        }
+
+        function formatHours(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = Math.round(minutes % 60);
+            if (h === 0 && m === 0) return '0h 0m';
+            return `${h}h ${m}m`;
+        }
+
+        function formatHoursDecimal(minutes) {
+            const h = minutes / 60;
+            return h.toFixed(2) + ' hours';
+        }
+
+        function formatTimeDisplay(timeStr) {
+            if (!timeStr) return '--:--:--';
+            return timeStr;
+        }
+
+        function getCurrentWeekRange() {
+            const now = new Date();
+            const day = now.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diff);
+            monday.setHours(0, 0, 0, 0);
+
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            return { monday: formatDate(monday), sunday: formatDate(sunday), mondayDate: monday };
+        }
+
+        function isDateInWeek(dateStr, weekRange) {
+            return dateStr >= weekRange.monday && dateStr <= weekRange.sunday;
+        }
+
+        // ===================== TOAST SYSTEM =====================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 350);
+            }, 2500);
+        }
+
+        // ===================== BIG POPUP SYSTEM =====================
+        // Used for clock in/out confirmations: large, centered, stays on screen
+        // until the employee clicks anywhere - never auto-dismisses.
+        function showBigPopup(message, type = 'info') {
+            const icons = { success: '✅', error: '⚠️', info: 'ℹ️' };
+            const container = document.getElementById('bigPopupContainer');
+            container.innerHTML = `
+                <div class="big-popup-overlay" id="bigPopupOverlay" onclick="closeBigPopup()">
+                    <div class="big-popup ${type}">
+                        <div class="big-popup-icon">${icons[type] || icons.info}</div>
+                        <div class="big-popup-message">${message}</div>
+                        <div class="big-popup-hint">Tap anywhere to close</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeBigPopup() {
+            const overlay = document.getElementById('bigPopupOverlay');
+            if (!overlay) return;
+            overlay.classList.add('closing');
+            setTimeout(() => {
+                document.getElementById('bigPopupContainer').innerHTML = '';
+            }, 150);
+        }
+
+        // ===================== MODAL SYSTEM =====================
+        function openModal(htmlContent) {
+            const container = document.getElementById('modalContainer');
+            container.innerHTML = `
+                <div class="modal-overlay" id="modalOverlay" onclick="closeModalOnOverlay(event)">
+                    <div class="modal">
+                        ${htmlContent}
+                    </div>
+                </div>
+            `;
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const overlay = document.querySelector('.modal-overlay');
+            if (overlay) {
+                overlay.classList.add('closing');
+                setTimeout(() => {
+                    document.getElementById('modalContainer').innerHTML = '';
+                    document.body.style.overflow = '';
+                }, 150);
+            } else {
+                document.getElementById('modalContainer').innerHTML = '';
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeModalOnOverlay(event) {
+            if (event.target === event.currentTarget) {
+                closeModal();
+            }
+        }
+
+        // ===================== EMPLOYEE HELPERS =====================
+        function getEmployees() {
+            return loadData();
+        }
+
+        function getEmployee(id) {
+            return getEmployees().find(e => e.id === id);
+        }
+
+        function isClockedIn(employee) {
+            return employee.records.some(r => r.clockOut === null || r.clockOut === '');
+        }
+
+        function getActiveSession(employee) {
+            return employee.records.find(r => r.clockOut === null || r.clockOut === '');
+        }
+
+        function getTodayRecord(employee) {
+            const today = getCurrentDate();
+            return employee.records.find(r => r.date === today);
+        }
+
+        function getAvatarColor(name) {
+            const colors = [
+                '#4f46e5', '#7c3aed', '#0ea5e9', '#10b981',
+                '#f59e0b', '#ef4444', '#ec4899', '#8b5cf6',
+                '#14b8a6', '#f97316', '#6366f1', '#06b6d4'
+            ];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function getInitials(name) {
+            const parts = name.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+            return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+        }
+
+        // ===================== ADMIN AUTH =====================
+        function requireAdmin(callback) {
+            if (adminUnlocked) { callback(); return; }
+            openAdminPinModal(callback);
+        }
+
+        function openAdminPinModal(onSuccess) {
+            pendingAdminCallback = onSuccess;
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">🔐</div>
+                    <h3>Enter Admin PIN</h3>
+                    <p style="color:var(--gray-500);font-size:0.85rem;margin:6px 0 14px;">This action is restricted to Admin</p>
+                    <input type="password" inputmode="numeric" id="adminPinInput" maxlength="6" placeholder="••••"
+                        style="width:100%;padding:12px;font-size:1.4rem;text-align:center;letter-spacing:6px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:14px;box-sizing:border-box;" autofocus>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitAdminPin()">Confirm</button>
+                    </div>
+                </div>
+            `;
+            openModal(html);
+            setTimeout(() => {
+                const inp = document.getElementById('adminPinInput');
+                if (inp) {
+                    inp.focus();
+                    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAdminPin(); });
+                }
+            }, 50);
+        }
+
+        function submitAdminPin() {
+            const inp = document.getElementById('adminPinInput');
+            const val = inp ? inp.value.trim() : '';
+            if (val && val === settingsCache.adminPin) {
+                adminUnlocked = true;
+                closeModal();
+                showToast('🔓 Admin unlocked', 'success');
+                const cb = pendingAdminCallback;
+                pendingAdminCallback = null;
+                if (cb) cb();
+            } else {
+                showToast('❌ Incorrect PIN', 'error');
+            }
+        }
+
+        function adminLock() {
+            adminUnlocked = false;
+            showToast('🔒 Admin locked', 'info');
+            renderAdminSection();
+        }
+
+        // Deleting an employee from the Dashboard or Add Employee tab always asks
+        // for the Admin PIN, even if Admin was already unlocked elsewhere in this
+        // session. This is a deliberate extra safety check for a destructive action
+        // performed outside the Admin tab.
+        function deleteEmployeeGated(employeeId, employeeName) {
+            openAdminPinModal(() => confirmDeleteEmployee(employeeId, employeeName));
+        }
+
+        // ===================== PAY RATE / DATE CATEGORY HELPERS =====================
+        function getEmployeeRole(emp) {
+            if (emp.role === 'supervisor') return 'supervisor';
+            if (emp.role === 'manager') return 'manager';
+            return 'staff';
+        }
+
+        function getRoleLabel(roleKey) {
+            if (roleKey === 'supervisor') return 'Shift Supervisor';
+            if (roleKey === 'manager') return 'Manager';
+            return 'Staff';
+        }
+
+        function getDateCategory(dateStr, dayOfWeek) {
+            if (settingsCache.publicHolidays.includes(dateStr)) return 'ph';
+            if (dayOfWeek === 0 || dayOfWeek === 6) return 'weekend';
+            return 'weekday';
+        }
+
+        function computeEmployeeStats(emp, range) {
+            const stats = { weekdayMin: 0, weekendMin: 0, phMin: 0 };
+            emp.records.forEach(r => {
+                if (r.date < range.start || r.date > range.end) return;
+                let minutes = 0;
+                if (r.clockIn && r.clockOut) {
+                    minutes = r.totalMinutes != null ? r.totalMinutes : calculateMinutes(r.clockIn, r.clockOut);
+                } else if (r.clockIn && !r.clockOut && r.date === getCurrentDate()) {
+                    minutes = calculateMinutes(r.clockIn, getCurrentTime());
+                }
+                const cat = getDateCategory(r.date, r.dayOfWeek);
+                if (cat === 'ph') stats.phMin += minutes;
+                else if (cat === 'weekend') stats.weekendMin += minutes;
+                else stats.weekdayMin += minutes;
+            });
+            stats.totalMin = stats.weekdayMin + stats.weekendMin + stats.phMin;
+            return stats;
+        }
+
+        function computeEmployeeWage(emp, stats) {
+            const rates = settingsCache.rates[getEmployeeRole(emp)] || { weekday: 0, weekend: 0, publicHoliday: 0 };
+            return (stats.weekdayMin / 60) * rates.weekday +
+                   (stats.weekendMin / 60) * rates.weekend +
+                   (stats.phMin / 60) * rates.publicHoliday;
+        }
+
+        function isoWeekToRange(isoWeekStr) {
+            const [yearStr, weekStr] = isoWeekStr.split('-W');
+            const year = parseInt(yearStr, 10);
+            const week = parseInt(weekStr, 10);
+            const jan4 = new Date(year, 0, 4);
+            const jan4Day = jan4.getDay() || 7;
+            const week1Monday = new Date(jan4);
+            week1Monday.setDate(jan4.getDate() - jan4Day + 1);
+            const monday = new Date(week1Monday);
+            monday.setDate(week1Monday.getDate() + (week - 1) * 7);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            const fmt = d => d.toISOString().split('T')[0];
+            return { start: fmt(monday), end: fmt(sunday) };
+        }
+
+        function monthToRange(monthStr) {
+            const [year, month] = monthStr.split('-').map(Number);
+            const start = new Date(year, month - 1, 1);
+            const end = new Date(year, month, 0);
+            const fmt = d => d.toISOString().split('T')[0];
+            return { start: fmt(start), end: fmt(end) };
+        }
+
+        // ===================== CLOCK IN / OUT =====================
+        function handleClockIn(employeeId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+
+            if (isClockedIn(emp)) {
+                closeModal();
+                showBigPopup(`${emp.name} is already clocked in!`, 'error');
+                return;
+            }
+
+            const dateStr = getCurrentDate();
+            const timeStr = getCurrentTime();
+            // Always derive dayOfWeek FROM dateStr (single source of truth),
+            // never compute it separately from `now` — that duplication was
+            // the root cause of Date/Day mismatches.
+            const dayOfWeek = getDayOfWeek(dateStr);
+
+            emp.records.push({
+                id: generateId(),
+                date: dateStr,
+                dayOfWeek: dayOfWeek,
+                clockIn: timeStr,
+                clockOut: null
+            });
+
+            saveData(employees);
+            closeModal();
+            showBigPopup(`${emp.name} clocked in at ${timeStr}`, 'success');
+            renderDashboard();
+            renderEmployeeListMini();
+        }
+
+        function handleClockOut(employeeId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+
+            const activeSession = getActiveSession(emp);
+            if (!activeSession) {
+                closeModal();
+                showBigPopup(`${emp.name} is not clocked in!`, 'error');
+                return;
+            }
+
+            const timeStr = getCurrentTime();
+            const minutes = calculateMinutes(activeSession.clockIn, timeStr);
+            activeSession.clockOut = timeStr;
+            activeSession.totalMinutes = Math.round(minutes);
+
+            saveData(employees);
+            const hours = formatHours(Math.round(minutes));
+
+            const todayStr = getCurrentDate();
+            const todayMinutes = emp.records
+                .filter(r => r.date === todayStr && r.clockIn && r.clockOut)
+                .reduce((sum, r) => sum + (r.totalMinutes != null ? r.totalMinutes : calculateMinutes(r.clockIn, r.clockOut)), 0);
+
+            closeModal();
+            showBigPopup(
+                `${emp.name} clocked out at ${timeStr}<br>This shift: ${hours}<br>Total today: ${formatHours(Math.round(todayMinutes))}`,
+                'success'
+            );
+            renderDashboard();
+            renderEmployeeListMini();
+        }
+
+        // ===================== MODAL VIEWS =====================
+        function openEmployeeModal(employeeId) {
+            const emp = getEmployee(employeeId);
+            if (!emp) {
+                showToast('Employee not found', 'error');
+                return;
+            }
+
+            const active = isClockedIn(emp);
+            const todayRec = getTodayRecord(emp);
+            const activeSession = getActiveSession(emp);
+
+            let statusText = 'Not clocked in';
+            let statusClass = 'status-idle';
+            let statusBg = 'status-idle';
+            if (active && activeSession) {
+                statusText = `Working since ${activeSession.clockIn}`;
+                statusClass = 'status-working';
+                statusBg = 'status-working';
+            }
+
+            const avatarColor = getAvatarColor(emp.name);
+            const initials = getInitials(emp.name);
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;margin-bottom:12px;">
+                    <div style="width:60px;height:60px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;margin:0 auto 8px;">
+                        ${initials}
+                    </div>
+                    <h3>${emp.name}</h3>
+                    <div class="modal-subtitle">
+                        <span class="emp-status ${statusBg}" style="margin-top:4px;">
+                            <span class="status-dot"></span> ${statusText}
+                        </span>
+                    </div>
+                </div>
+                <div class="modal-options">
+                    <button class="modal-option-btn" onclick="showClockInOutView('${emp.id}')">
+                        <span class="opt-icon">⏱️</span>
+                        <span class="opt-text">
+                            <span class="opt-label">Clock In / Out</span><br>
+                            <span class="opt-desc">Log in or out of a work shift</span>
+                        </span>
+                        <span style="font-size:1.4rem;color:var(--gray-300);">›</span>
+                    </button>
+                    <button class="modal-option-btn" onclick="showWeeklyHoursView('${emp.id}')">
+                        <span class="opt-icon">📊</span>
+                        <span class="opt-text">
+                            <span class="opt-label">This Week's Hours</span><br>
+                            <span class="opt-desc">View total hours, including Sat & Sun</span>
+                        </span>
+                        <span style="font-size:1.4rem;color:var(--gray-300);">›</span>
+                    </button>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function showClockInOutView(employeeId) {
+            const emp = getEmployee(employeeId);
+            if (!emp) {
+                closeModal();
+                return;
+            }
+
+            const active = isClockedIn(emp);
+            const activeSession = getActiveSession(emp);
+            const todayRec = getTodayRecord(emp);
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', day: '2-digit', month: '2-digit',
+                year: 'numeric' });
+
+            let clockInToday = '--:--:--';
+            let clockOutToday = '--:--:--';
+            if (todayRec && todayRec.clockIn) clockInToday = todayRec.clockIn;
+            if (todayRec && todayRec.clockOut) clockOutToday = todayRec.clockOut;
+            if (active && activeSession && activeSession.date === getCurrentDate()) clockInToday = activeSession.clockIn;
+
+            const avatarColor = getAvatarColor(emp.name);
+            const initials = getInitials(emp.name);
+
+            let statusBg = active ? 'status-working' : 'status-idle';
+            let statusText = active ?
+                `🟢 Working since ${activeSession.clockIn}` :
+                '⚪ Not clocked in';
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="width:52px;height:52px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:white;margin:0 auto 6px;">
+                        ${initials}
+                    </div>
+                    <h3>${emp.name}</h3>
+                    <div class="modal-subtitle">
+                        <span class="emp-status ${statusBg}">
+                            <span class="status-dot"></span> ${statusText}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="clock-display">
+                    <div class="time">${getCurrentTime()}</div>
+                    <div class="date">${dateStr}</div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0;">
+                    <div style="background:var(--gray-50);padding:12px;border-radius:8px;text-align:center;">
+                        <div style="font-size:0.7rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;">Clock In</div>
+                        <div style="font-size:1.1rem;font-weight:700;color:var(--gray-800);">${clockInToday}</div>
+                    </div>
+                    <div style="background:var(--gray-50);padding:12px;border-radius:8px;text-align:center;">
+                        <div style="font-size:0.7rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;">Clock Out</div>
+                        <div style="font-size:1.1rem;font-weight:700;color:var(--gray-800);">${clockOutToday}</div>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="showEmployeeOptions('${emp.id}')">
+                        ← Back
+                    </button>
+                    ${active ? `
+                        <button class="btn btn-danger btn-lg" style="flex:2;justify-content:center;" onclick="handleClockOut('${emp.id}')">
+                            ⏹️ Clock Out
+                        </button>
+                    ` : `
+                        <button class="btn btn-success btn-lg" style="flex:2;justify-content:center;" onclick="handleClockIn('${emp.id}')">
+                            ▶️ Clock In
+                        </button>
+                    `}
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function showEmployeeOptions(employeeId) {
+            openEmployeeModal(employeeId);
+        }
+
+        function showWeeklyHoursView(employeeId) {
+            const emp = getEmployee(employeeId);
+            if (!emp) {
+                closeModal();
+                return;
+            }
+
+            const weekRange = getCurrentWeekRange();
+            const weekRecords = emp.records.filter(r => isDateInWeek(r.date, weekRange));
+
+            // Group by day of week
+            const dayMap = {};
+            weekRecords.forEach(r => {
+                const key = r.dayOfWeek;
+                if (!dayMap[key]) dayMap[key] = { records: [], totalMinutes: 0 };
+                dayMap[key].records.push(r);
+                if (r.clockIn && r.clockOut) {
+                    dayMap[key].totalMinutes += calculateMinutes(r.clockIn, r.clockOut);
+                } else if (r.clockIn && !r.clockOut) {
+                    // Active session - calculate up to now
+                    const nowMinutes = calculateMinutes(r.clockIn, getCurrentTime());
+                    dayMap[key].totalMinutes += nowMinutes;
+                }
+            });
+
+            const satMinutes = dayMap[6] ? dayMap[6].totalMinutes : 0;
+            const sunMinutes = dayMap[0] ? dayMap[0].totalMinutes : 0;
+            const weekdayMinutes = Object.keys(dayMap)
+                .filter(k => k !== '6' && k !== '0')
+                .reduce((sum, k) => sum + (dayMap[k] ? dayMap[k].totalMinutes : 0), 0);
+            const totalMinutes = satMinutes + sunMinutes + weekdayMinutes;
+
+            const avatarColor = getAvatarColor(emp.name);
+            const initials = getInitials(emp.name);
+
+            // Build table rows
+            let tableRows = '';
+            const daysInWeek = [
+                { dow: 1, label: 'Monday' },
+                { dow: 2, label: 'Tuesday' },
+                { dow: 3, label: 'Wednesday' },
+                { dow: 4, label: 'Thursday' },
+                { dow: 5, label: 'Friday' },
+                { dow: 6, label: 'Saturday', cssClass: 'sat-row' },
+                { dow: 0, label: 'Sunday', cssClass: 'sun-row' },
+            ];
+
+            daysInWeek.forEach(({ dow, label, cssClass }) => {
+                const dayData = dayMap[dow];
+                const clockIn = dayData && dayData.records.length > 0 ? dayData.records[0].clockIn : '--:--:--';
+                const clockOut = dayData && dayData.records.length > 0 ?
+                    (dayData.records[0].clockOut || 'Working') : '--:--:--';
+                const minutes = dayData ? dayData.totalMinutes : 0;
+                const hoursDisplay = dayData ? formatHours(Math.round(minutes)) : '0h 0m';
+                tableRows += `
+                    <tr class="${cssClass || ''}">
+                        <td style="font-weight:600;text-align:left;">${label}</td>
+                        <td>${formatTimeDisplay(clockIn)}</td>
+                        <td>${formatTimeDisplay(clockOut)}</td>
+                        <td style="font-weight:700;">${hoursDisplay}</td>
+                    </tr>
+                `;
+            });
+
+            // Active session warning
+            const hasActive = weekRecords.some(r => !r.clockOut);
+            const activeWarning = hasActive ?
+                '<div style="background:var(--warning-light);padding:8px 12px;border-radius:6px;font-size:0.75rem;color:#92400e;margin-top:8px;">⚠️ Active shift in progress - hours calculated up to current time</div>' :
+                '';
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;margin-bottom:8px;">
+                    <div style="width:48px;height:48px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:white;margin:0 auto 6px;">
+                        ${initials}
+                    </div>
+                    <h3>${emp.name}</h3>
+                    <div class="modal-subtitle">📅 This Week (${weekRange.monday} → ${weekRange.sunday})</div>
+                </div>
+
+                <div class="weekly-summary-cards">
+                    <div class="summary-card sat">
+                        <div class="label">📆 Saturday</div>
+                        <div class="value">${formatHours(Math.round(satMinutes))}</div>
+                    </div>
+                    <div class="summary-card sun">
+                        <div class="label">📆 Sunday</div>
+                        <div class="value">${formatHours(Math.round(sunMinutes))}</div>
+                    </div>
+                    <div class="summary-card total">
+                        <div class="label">📊 Total Week Hours</div>
+                        <div class="value">${formatHours(Math.round(totalMinutes))} (${formatHoursDecimal(totalMinutes)})</div>
+                    </div>
+                </div>
+
+                <table class="weekly-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Day</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Total Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                        <tr class="total-row">
+                            <td style="text-align:left;">TOTAL</td>
+                            <td colspan="2"></td>
+                            <td>${formatHours(Math.round(totalMinutes))}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                ${activeWarning}
+
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="showEmployeeOptions('${emp.id}')">
+                        ← Back
+                    </button>
+                    <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="showClockInOutView('${emp.id}')">
+                        ⏱️ Clock In/Out
+                    </button>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        // ===================== EDIT HOURS (ADMIN) =====================
+        function renderEditHoursView(employeeId) {
+            const emp = getEmployee(employeeId);
+            if (!emp) { closeModal(); return; }
+
+            const sortedRecords = [...emp.records]
+                .sort((a, b) => b.date.localeCompare(a.date) || (b.clockIn || '').localeCompare(a.clockIn || ''))
+                .slice(0, 20);
+
+            const avatarColor = getAvatarColor(emp.name);
+            const initials = getInitials(emp.name);
+
+            const rows = sortedRecords.map(r => `
+                <div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;">
+                    <div style="width:76px;font-size:0.72rem;color:var(--gray-500);">${r.date}<br>${getShortDayName(getDayOfWeek(r.date))}</div>
+                    <input type="time" step="1" value="${r.clockIn || ''}" id="editIn_${r.id}" style="flex:1;min-width:90px;padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.8rem;">
+                    <input type="time" step="1" value="${r.clockOut || ''}" id="editOut_${r.id}" style="flex:1;min-width:90px;padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.8rem;">
+                    <button class="btn btn-outline" style="padding:6px 8px;" onclick="saveEditedRecord('${emp.id}','${r.id}')" title="Save">💾</button>
+                    <button class="btn btn-danger" style="padding:6px 8px;" onclick="deleteRecord('${emp.id}','${r.id}')" title="Delete">🗑️</button>
+                </div>
+            `).join('') || '<p style="color:var(--gray-400);font-size:0.85rem;">No time records yet</p>';
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;margin-bottom:8px;">
+                    <div style="width:48px;height:48px;border-radius:50%;background:${avatarColor};display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:white;margin:0 auto 6px;">${initials}</div>
+                    <h3>${emp.name}</h3>
+                    <div class="modal-subtitle">✏️ Edit Hours (last 20 records)</div>
+                </div>
+                <div style="max-height:320px;overflow-y:auto;">${rows}</div>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">← Back to Admin</button>
+                    <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="addManualRecord('${emp.id}')">➕ Add Manual Shift</button>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function saveEditedRecord(employeeId, recordId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+            const rec = emp.records.find(r => r.id === recordId);
+            if (!rec) return;
+
+            const inEl = document.getElementById(`editIn_${recordId}`);
+            const outEl = document.getElementById(`editOut_${recordId}`);
+            const inVal = inEl ? inEl.value : '';
+            const outVal = outEl ? outEl.value : '';
+
+            rec.clockIn = inVal ? (inVal.length === 5 ? inVal + ':00' : inVal) : null;
+            rec.clockOut = outVal ? (outVal.length === 5 ? outVal + ':00' : outVal) : null;
+
+            if (rec.clockIn && rec.clockOut) {
+                rec.totalMinutes = Math.round(calculateMinutes(rec.clockIn, rec.clockOut));
+            } else {
+                delete rec.totalMinutes;
+            }
+
+            saveData(employees);
+            showToast('✅ Hours updated', 'success');
+            renderDashboard();
+            renderEmployeeListMini();
+        }
+
+        function deleteRecord(employeeId, recordId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+            emp.records = emp.records.filter(r => r.id !== recordId);
+            saveData(employees);
+            showToast('🗑️ Record deleted', 'info');
+            renderEditHoursView(employeeId);
+            renderDashboard();
+        }
+
+        function addManualRecord(employeeId) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+            const dateStr = getCurrentDate();
+            emp.records.push({
+                id: generateId(),
+                date: dateStr,
+                dayOfWeek: getDayOfWeek(dateStr),
+                clockIn: '09:00:00',
+                clockOut: '17:00:00',
+                totalMinutes: 480
+            });
+            saveData(employees);
+            showToast('➕ Manual shift added - please set the correct times', 'info');
+            renderEditHoursView(employeeId);
+            renderDashboard();
+        }
+
+        // ===================== RENDER DASHBOARD =====================
+        function renderDashboard() {
+            const employees = getEmployees();
+            const grid = document.getElementById('dashboardGrid');
+
+            if (employees.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column:1/-1;">
+                        <div class="empty-icon">👥</div>
+                        <p>No employees yet. Add an employee to get started!</p>
+                        <button class="btn btn-primary" style="margin-top:12px;" onclick="switchTab('add')">
+                            ➕ Add Employee
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = employees.map(emp => {
+                const active = isClockedIn(emp);
+                const avatarColor = getAvatarColor(emp.name);
+                const initials = getInitials(emp.name);
+                const todayRec = getTodayRecord(emp);
+                const activeSession = getActiveSession(emp);
+
+                let statusHtml = '';
+                let todayInfo = '';
+
+                if (active && activeSession) {
+                    statusHtml = `
+                        <span class="emp-status status-working">
+                            <span class="status-dot"></span> Working from ${activeSession.clockIn}
+                        </span>
+                    `;
+                    todayInfo = `⏱️ Clock in: ${activeSession.clockIn}`;
+                } else if (todayRec && todayRec.clockOut) {
+                    const mins = todayRec.totalMinutes || calculateMinutes(todayRec.clockIn, todayRec.clockOut);
+                    statusHtml = `
+                        <span class="emp-status status-idle">
+                            <span class="status-dot"></span> Shift ended
+                        </span>
+                    `;
+                    todayInfo = `✅ Today: ${formatHours(Math.round(mins))}`;
+                } else {
+                    statusHtml = `
+                        <span class="emp-status status-idle">
+                            <span class="status-dot"></span> Not clocked in
+                        </span>
+                    `;
+                    todayInfo = '⏳ No activity yet';
+                }
+
+                return `
+                    <div class="employee-card" onclick="openEmployeeModal('${emp.id}')" title="Click to see options">
+                        <button class="delete-btn" onclick="event.stopPropagation(); deleteEmployeeGated('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')" title="Delete employee">
+                            🗑️
+                        </button>
+                        <div class="avatar" style="background:${avatarColor};">${initials}</div>
+                        <div class="emp-name">${emp.name}</div>
+                        ${statusHtml}
+                        <div class="today-info">${todayInfo}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderEmployeeListMini() {
+            const employees = getEmployees();
+            const container = document.getElementById('employeeListMini');
+            if (employees.length === 0) {
+                container.innerHTML = '<p style="color:var(--gray-400);font-size:0.85rem;">No employees yet</p>';
+                return;
+            }
+            container.innerHTML = employees.map(emp => `
+                <span class="employee-tag" title="Click to delete">
+                    ${emp.name}
+                    <span class="remove-x" onclick="event.stopPropagation(); deleteEmployeeGated('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">✕</span>
+                </span>
+            `).join('');
+        }
+
+        // ===================== DELETE EMPLOYEE =====================
+        function confirmDeleteEmployee(employeeId, employeeName) {
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:3rem;margin-bottom:12px;">⚠️</div>
+                    <h3>Delete Employee?</h3>
+                    <p style="color:var(--gray-500);margin:8px 0 16px;">
+                        Are you sure you want to delete <strong>${employeeName}</strong>?<br>
+                        All time tracking data for this employee will be permanently deleted.
+                    </p>
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-danger" onclick="executeDeleteEmployee('${employeeId}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function executeDeleteEmployee(employeeId) {
+            let employees = getEmployees();
+            employees = employees.filter(e => e.id !== employeeId);
+            saveData(employees);
+            closeModal();
+            showToast('🗑️ Employee deleted', 'info');
+            renderDashboard();
+            renderEmployeeListMini();
+        }
+
+        // ===================== ADD EMPLOYEE =====================
+        function handleAddEmployee(event) {
+            event.preventDefault();
+            const nameInput = document.getElementById('empName');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showToast('⚠️ Please enter employee name', 'error');
+                return;
+            }
+
+            const employees = getEmployees();
+            // Check duplicate
+            if (employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+                showToast('⚠️ Employee name already exists!', 'error');
+                return;
+            }
+
+            const roleSelect = document.getElementById('empRole');
+            const roleVal = roleSelect ? roleSelect.value : 'staff';
+            const role = (roleVal === 'supervisor' || roleVal === 'manager') ? roleVal : 'staff';
+
+            employees.push({
+                id: generateId(),
+                name: name,
+                role: role,
+                records: []
+            });
+
+            saveData(employees);
+            nameInput.value = '';
+            showToast(`✅ Employee "${name}" added`, 'success');
+            renderDashboard();
+            renderEmployeeListMini();
+            switchTab('dashboard');
+        }
+
+        // ===================== EXPORT MODAL (choose date range + employees) =====================
+        function openExportModal() {
+            const employees = getEmployees();
+            if (employees.length === 0) {
+                showToast('⚠️ No data to export!', 'error');
+                return;
+            }
+
+            const today = getCurrentDate();
+            const week = getCurrentWeekRange();
+
+            const sortedEmployees = [...employees].sort((a, b) => a.name.localeCompare(b.name));
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:2.2rem;margin-bottom:8px;">📊</div>
+                    <h3>Export Time Tracking</h3>
+                    <p style="color:var(--gray-500);font-size:0.85rem;margin:6px 0 16px;">Chọn khoảng ngày và nhân viên muốn export</p>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="display:block;font-size:0.8rem;font-weight:600;color:var(--gray-600);margin-bottom:6px;">Khoảng ngày</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="date" id="exportStartDate" value="${week.monday}"
+                            style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:var(--font);">
+                        <span style="color:var(--gray-400);">→</span>
+                        <input type="date" id="exportEndDate" value="${today}"
+                            style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:var(--font);">
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="setExportDateRange('today')">Hôm nay</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="setExportDateRange('week')">Tuần này</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="setExportDateRange('all')">Toàn bộ</button>
+                    </div>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="font-size:0.8rem;font-weight:600;color:var(--gray-600);">Nhân viên</label>
+                        <div style="display:flex;gap:12px;">
+                            <button type="button" onclick="setExportEmployeeChecks(true)" style="background:none;border:none;color:var(--primary);font-size:0.78rem;font-weight:700;cursor:pointer;">Chọn tất cả</button>
+                            <button type="button" onclick="setExportEmployeeChecks(false)" style="background:none;border:none;color:var(--gray-400);font-size:0.78rem;font-weight:700;cursor:pointer;">Bỏ chọn</button>
+                        </div>
+                    </div>
+                    <div id="exportEmployeeChecklist" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:8px;padding:6px 10px;">
+                        ${sortedEmployees.map(emp => `
+                            <label style="display:flex;align-items:center;gap:10px;padding:7px 4px;cursor:pointer;font-size:0.9rem;border-bottom:1px solid var(--gray-100);">
+                                <input type="checkbox" class="export-emp-checkbox" value="${emp.id}" checked style="width:16px;height:16px;flex-shrink:0;">
+                                <span>${emp.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">Hủy</button>
+                    <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="confirmExport()">📊 Export</button>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function setExportDateRange(preset) {
+            const startInput = document.getElementById('exportStartDate');
+            const endInput = document.getElementById('exportEndDate');
+            if (!startInput || !endInput) return;
+            const today = getCurrentDate();
+            if (preset === 'today') {
+                startInput.value = today;
+                endInput.value = today;
+            } else if (preset === 'week') {
+                const week = getCurrentWeekRange();
+                startInput.value = week.monday;
+                endInput.value = today;
+            } else if (preset === 'all') {
+                const employees = getEmployees();
+                let minDate = today;
+                employees.forEach(emp => emp.records.forEach(r => {
+                    if (r.date < minDate) minDate = r.date;
+                }));
+                startInput.value = minDate;
+                endInput.value = today;
+            }
+        }
+
+        function setExportEmployeeChecks(checked) {
+            document.querySelectorAll('.export-emp-checkbox').forEach(cb => { cb.checked = checked; });
+        }
+
+        function confirmExport() {
+            const startDate = document.getElementById('exportStartDate').value;
+            const endDate = document.getElementById('exportEndDate').value;
+            if (!startDate || !endDate) {
+                showToast('⚠️ Vui lòng chọn khoảng ngày', 'error');
+                return;
+            }
+            if (startDate > endDate) {
+                showToast('⚠️ Ngày bắt đầu phải trước ngày kết thúc', 'error');
+                return;
+            }
+            const selectedIds = Array.from(document.querySelectorAll('.export-emp-checkbox:checked')).map(cb => cb.value);
+            if (selectedIds.length === 0) {
+                showToast('⚠️ Vui lòng chọn ít nhất 1 nhân viên', 'error');
+                return;
+            }
+
+            const allEmployees = getEmployees();
+            const filtered = allEmployees
+                .filter(emp => selectedIds.includes(emp.id))
+                .map(emp => ({
+                    ...emp,
+                    records: emp.records.filter(r => r.date >= startDate && r.date <= endDate)
+                }));
+
+            const hasAnyRecords = filtered.some(emp => emp.records.length > 0);
+            if (!hasAnyRecords) {
+                showToast('⚠️ Không có dữ liệu trong khoảng ngày đã chọn', 'error');
+                return;
+            }
+
+            closeModal();
+            exportToExcel(filtered, startDate, endDate);
+        }
+
+        // ===================== EXPORT TO EXCEL =====================
+        function exportToExcel(employees, startDate, endDate) {
+            employees = employees || getEmployees();
+            if (employees.length === 0) {
+                showToast('⚠️ No data to export!', 'error');
+                return;
+            }
+
+            const rangeLabel = (startDate && endDate) ? `${startDate}_to_${endDate}` : getCurrentDate();
+
+            // Check if SheetJS is loaded
+            if (typeof XLSX === 'undefined') {
+                // Fallback to CSV
+                exportToCSV(employees, rangeLabel);
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+                const data = [
+                    ['Employee Name', 'Date', 'Day', 'Clock In', 'Clock Out', 'Total Minutes', 'Total Hours']
+                ];
+
+                employees.forEach(emp => {
+                    // Sort records by date
+                    const sortedRecords = [...emp.records].sort((a, b) => a.date.localeCompare(b.date) || a
+                        .clockIn.localeCompare(b.clockIn));
+                    sortedRecords.forEach(rec => {
+                        const clockOutVal = rec.clockOut || 'Working';
+                        let totalMinutes = '';
+                        let totalDisplay = 'Working';
+                        if (rec.clockOut) {
+                            totalMinutes = Math.round(calculateMinutes(rec.clockIn, rec.clockOut));
+                            totalDisplay = formatHours(totalMinutes);
+                        } else if (rec.clockIn) {
+                            totalMinutes = Math.round(calculateMinutes(rec.clockIn, getCurrentTime()));
+                            totalDisplay = formatHours(totalMinutes) + ' (ongoing)';
+                        }
+                        data.push([
+                            emp.name,
+                            rec.date,
+                            getDayName(getDayOfWeek(rec.date)),
+                            rec.clockIn || '--:--:--',
+                            clockOutVal,
+                            totalMinutes,
+                            totalDisplay
+                        ]);
+                    });
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                ws['!cols'] = [
+                    { wch: 22 }, // Employee Name
+                    { wch: 12 }, // Date
+                    { wch: 10 }, // Day
+                    { wch: 14 }, // Clock In
+                    { wch: 16 }, // Clock Out
+                    { wch: 14 }, // Total Minutes
+                    { wch: 20 }, // Total Hours
+                ];
+
+                XLSX.utils.book_append_sheet(wb, ws, 'Time Tracking');
+                XLSX.writeFile(wb, `time_tracking_${rangeLabel}.xlsx`);
+                showToast('📊 Excel file exported successfully!', 'success');
+            } catch (e) {
+                console.error('Export error:', e);
+                showToast('⚠️ Error exporting Excel, trying CSV instead', 'error');
+                exportToCSV(employees, rangeLabel);
+            }
+        }
+
+        function exportToCSV(employees, rangeLabel) {
+            rangeLabel = rangeLabel || getCurrentDate();
+            try {
+                let csv = '﻿'; // BOM for UTF-8
+                csv += 'Employee Name,Date,Day,Clock In,Clock Out,Total Minutes,Total Hours\n';
+                employees.forEach(emp => {
+                    const sortedRecords = [...emp.records].sort((a, b) => a.date.localeCompare(b.date) || a
+                        .clockIn.localeCompare(b.clockIn));
+                    sortedRecords.forEach(rec => {
+                        const clockOutVal = rec.clockOut || 'Working';
+                        let totalMinutes = '';
+                        let totalDisplay = 'Working';
+                        if (rec.clockOut) {
+                            totalMinutes = Math.round(calculateMinutes(rec.clockIn, rec.clockOut));
+                            totalDisplay = formatHours(totalMinutes);
+                        } else if (rec.clockIn) {
+                            totalMinutes = Math.round(calculateMinutes(rec.clockIn, getCurrentTime()));
+                            totalDisplay = formatHours(totalMinutes) + ' (ongoing)';
+                        }
+                        csv += `"${emp.name}","${rec.date}","${getDayName(getDayOfWeek(rec.date))}","${rec.clockIn || '--:--:--'}","${clockOutVal}","${totalMinutes}","${totalDisplay}"\n`;
+                    });
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `time_tracking_${rangeLabel}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                showToast('📄 CSV file exported successfully!', 'success');
+            } catch (e) {
+                console.error('CSV export error:', e);
+                showToast('⚠️ Error exporting file!', 'error');
+            }
+        }
+
+        // ===================== ADMIN LEVEL-2 PASSWORD GATE (data mgmt) =====================
+        // requireAdmin2 ALWAYS re-asks the 6-digit Level-2 password before running
+        // callback, regardless of whether the main Admin tab is already unlocked —
+        // this matches deleteEmployeeGated's "always re-check for destructive
+        // actions" pattern used elsewhere in this app.
+        function requireAdmin2(callback) {
+            openAdmin2PinModal(callback);
+        }
+
+        function openAdmin2PinModal(onSuccess) {
+            pendingAdmin2Callback = onSuccess;
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">🔒</div>
+                    <h3>Enter Level-2 Password</h3>
+                    <p style="color:var(--gray-500);font-size:0.85rem;margin:6px 0 14px;">This action requires the 6-digit Level-2 password</p>
+                    <input type="password" inputmode="numeric" id="admin2PinInput" maxlength="6" placeholder="••••••"
+                        style="width:100%;padding:12px;font-size:1.4rem;text-align:center;letter-spacing:6px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:14px;box-sizing:border-box;" autofocus>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="submitAdmin2PinModal()">Confirm</button>
+                    </div>
+                </div>
+            `;
+            openModal(html);
+            setTimeout(() => {
+                const inp = document.getElementById('admin2PinInput');
+                if (inp) {
+                    inp.focus();
+                    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAdmin2PinModal(); });
+                }
+            }, 50);
+        }
+
+        function submitAdmin2PinModal() {
+            const inp = document.getElementById('admin2PinInput');
+            const val = inp ? inp.value.trim() : '';
+            if (val && val === settingsCache.adminPin2) {
+                closeModal();
+                const cb = pendingAdmin2Callback;
+                pendingAdmin2Callback = null;
+                if (cb) cb();
+            } else {
+                showToast('❌ Incorrect Level-2 password', 'error');
+            }
+        }
+
+        // ---------- Change Level-2 password ----------
+        function renderChangeAdminPin2Modal() {
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <h3 style="text-align:center;">🔑 Change Level-2 Password</h3>
+                <p style="color:var(--gray-500);font-size:0.8rem;text-align:center;margin:8px 0 14px;">Must be exactly 6 digits.</p>
+                <input type="password" inputmode="numeric" id="newAdminPin2" maxlength="6" placeholder="New 6-digit password"
+                    style="width:100%;padding:10px;font-size:1.2rem;text-align:center;letter-spacing:4px;border:1px solid var(--gray-200);border-radius:8px;box-sizing:border-box;" autofocus>
+                <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:14px;" onclick="saveAdminPin2()">💾 Save</button>
+            `;
+            openModal(html);
+        }
+
+        function saveAdminPin2() {
+            const newPin = document.getElementById('newAdminPin2').value.trim();
+            if (!newPin) { showToast('⚠️ Enter a new password', 'error'); return; }
+            if (!/^\d{6}$/.test(newPin)) { showToast('⚠️ Level-2 password must be exactly 6 digits', 'error'); return; }
+            settingsCache.adminPin2 = newPin;
+            saveSettings();
+            closeModal();
+            showToast('✅ Level-2 password updated', 'success');
+        }
+
+        // ---------- Reset all data ----------
+        function confirmResetAllData() {
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">⚠️</div>
+                    <h3 style="color:var(--danger);">Reset All Data?</h3>
+                    <p style="color:var(--gray-500);font-size:0.85rem;margin:10px 0;">
+                        This will permanently delete all employees, clock records, public holidays and revenue entries for everyone using this app. This cannot be undone.
+                    </p>
+                    <p style="font-size:0.8rem;font-weight:700;margin-bottom:6px;">Type <span style="color:var(--danger);">RESET</span> to confirm</p>
+                    <input type="text" id="resetConfirmInput" placeholder="RESET" style="width:100%;padding:10px;text-align:center;text-transform:uppercase;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:14px;box-sizing:border-box;" autofocus>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="executeResetAllData()">🗑️ Reset Now</button>
+                    </div>
+                </div>
+            `;
+            openModal(html);
+            setTimeout(() => {
+                const inp = document.getElementById('resetConfirmInput');
+                if (inp) inp.focus();
+            }, 50);
+        }
+
+        function executeResetAllData() {
+            const inp = document.getElementById('resetConfirmInput');
+            const val = inp ? inp.value.trim().toUpperCase() : '';
+            if (val !== 'RESET') {
+                showToast('⚠️ Type RESET to confirm', 'error');
+                return;
+            }
+            employeesCache = [];
+            isRemoteUpdate = true;
+            dataDocRef.set({ employees: [], updatedAt: Date.now() }).catch(e => {
+                console.error('Reset error:', e);
+                showToast('⚠️ Error resetting data', 'error');
+            });
+
+            settingsCache.publicHolidays = [];
+            settingsCache.revenueEntries = [];
+            saveSettings();
+
+            closeModal();
+            showToast('🗑️ All data has been reset', 'success');
+            renderDashboard();
+            renderEmployeeListMini();
+            renderAdminSection();
+        }
+
+        // ---------- Backup (export) ----------
+        function exportBackupData() {
+            try {
+                const backup = {
+                    app: 'BME_ClockIn',
+                    exportedAt: new Date().toISOString(),
+                    employees: employeesCache,
+                    settings: settingsCache
+                };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `BME_ClockIn_Backup_${getCurrentDate()}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                showToast('📤 Backup exported successfully!', 'success');
+            } catch (e) {
+                console.error('Backup export error:', e);
+                showToast('⚠️ Error exporting backup', 'error');
+            }
+        }
+
+        // ---------- Restore (import) ----------
+        function triggerRestoreFilePicker() {
+            const inp = document.getElementById('restoreFileInput');
+            if (inp) inp.click();
+        }
+
+        function handleRestoreFileSelected(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = ''; // allow re-selecting the same file later
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let parsed;
+                try {
+                    parsed = JSON.parse(e.target.result);
+                } catch (err) {
+                    showToast('⚠️ Invalid backup file (not valid JSON)', 'error');
+                    return;
+                }
+                if (!parsed || !Array.isArray(parsed.employees) || typeof parsed.settings !== 'object') {
+                    showToast('⚠️ This file is not a valid BME ClockIn backup', 'error');
+                    return;
+                }
+                confirmRestoreData(parsed);
+            };
+            reader.onerror = () => showToast('⚠️ Error reading backup file', 'error');
+            reader.readAsText(file);
+        }
+
+        let pendingRestoreData = null;
+
+        function confirmRestoreData(parsed) {
+            pendingRestoreData = parsed;
+            const empCount = parsed.employees.length;
+            const exportedAt = parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString() : 'unknown date';
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div style="text-align:center;">
+                    <div style="font-size:2.5rem;margin-bottom:8px;">📥</div>
+                    <h3>Restore from Backup?</h3>
+                    <p style="color:var(--gray-500);font-size:0.85rem;margin:10px 0;">
+                        Backup contains <strong>${empCount}</strong> employee(s), exported ${exportedAt}.<br>
+                        This will <strong>overwrite all current data</strong> (employees, records and settings) for everyone using this app. This cannot be undone.
+                    </p>
+                    <div style="display:flex;gap:10px;margin-top:8px;">
+                        <button class="btn btn-outline" style="flex:1;justify-content:center;" onclick="closeModal()">Cancel</button>
+                        <button class="btn btn-danger" style="flex:1;justify-content:center;" onclick="executeRestoreData()">📥 Restore Now</button>
+                    </div>
+                </div>
+            `;
+            openModal(html);
+        }
+
+        function executeRestoreData() {
+            const parsed = pendingRestoreData;
+            if (!parsed) {
+                showToast('⚠️ Error reading backup data', 'error');
+                return;
+            }
+            pendingRestoreData = null;
+
+            employeesCache = Array.isArray(parsed.employees) ? parsed.employees : [];
+            isRemoteUpdate = true;
+            dataDocRef.set({ employees: employeesCache, updatedAt: Date.now() }).catch(e => {
+                console.error('Restore error:', e);
+                showToast('⚠️ Error restoring employee data', 'error');
+            });
+
+            settingsCache = {
+                adminPin: (parsed.settings && parsed.settings.adminPin) || settingsCache.adminPin,
+                adminPin2: (parsed.settings && parsed.settings.adminPin2) || settingsCache.adminPin2,
+                rates: mergeRates(parsed.settings && parsed.settings.rates),
+                publicHolidays: (parsed.settings && Array.isArray(parsed.settings.publicHolidays)) ? parsed.settings.publicHolidays : [],
+                revenueEntries: (parsed.settings && Array.isArray(parsed.settings.revenueEntries)) ? parsed.settings.revenueEntries : []
+            };
+            saveSettings();
+
+            closeModal();
+            showToast('✅ Data restored successfully', 'success');
+            renderDashboard();
+            renderEmployeeListMini();
+            renderAdminSection();
+        }
+
+        // ===================== TAB SWITCHING =====================
+        // ===================== ADMIN SECTION (main panel) =====================
+        function renderAdminSection() {
+            const container = document.getElementById('adminGate');
+            if (!container) return;
+
+            if (!adminUnlocked) {
+                container.innerHTML = `
+                    <div class="add-employee-panel" style="max-width:360px;margin:20px auto;text-align:center;">
+                        <div style="font-size:2.5rem;margin-bottom:8px;">🔐</div>
+                        <h2>Admin Area</h2>
+                        <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:16px;">Enter the Admin PIN to access reports, wages and settings</p>
+                        <input type="password" inputmode="numeric" id="adminTabPin" maxlength="6" placeholder="••••"
+                            style="width:100%;padding:12px;font-size:1.4rem;text-align:center;letter-spacing:6px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:12px;box-sizing:border-box;">
+                        <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" onclick="submitAdminTabPin()">Unlock</button>
+                    </div>
+                `;
+                setTimeout(() => {
+                    const inp = document.getElementById('adminTabPin');
+                    if (inp) {
+                        inp.focus();
+                        inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAdminTabPin(); });
+                    }
+                }, 50);
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                    <h2 style="font-size:1.1rem;font-weight:700;color:var(--gray-700);">🔐 Admin Area</h2>
+                    <button class="btn btn-outline" onclick="adminLock()">🔒 Lock Admin</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                    <button class="btn btn-outline" onclick="openRateSettingsModal()">💵 Pay Rates &amp; PIN</button>
+                    <button class="btn btn-outline" onclick="openPublicHolidayModal()">🎉 Public Holidays</button>
+                    <button class="btn btn-outline" onclick="openRevenueModal()">💰 Revenue</button>
+                </div>
+
+                <div class="add-employee-panel" style="margin-bottom:16px;">
+                    <h3 style="margin-bottom:10px;">📊 Hours &amp; Wage Report</h3>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <select id="reportPeriodType" onchange="onReportPeriodTypeChange()" style="padding:8px;border:1px solid var(--gray-200);border-radius:6px;">
+                            <option value="day">By Day</option>
+                            <option value="week">By Week</option>
+                            <option value="month">By Month</option>
+                        </select>
+                        <input type="date" id="reportDateInput" value="${getCurrentDate()}" onchange="renderAdminReport()" style="padding:8px;border:1px solid var(--gray-200);border-radius:6px;">
+                    </div>
+                    <div id="adminReportResult"></div>
+                </div>
+
+                <div class="add-employee-panel" style="margin-bottom:16px;">
+                    <h3 style="margin-bottom:10px;">👥 Manage Employees</h3>
+                    <div id="adminEmployeeList"></div>
+                </div>
+
+                <div class="add-employee-panel" style="border:1.5px solid var(--warning);">
+                    <h3 style="margin-bottom:6px;">🔒 Data Management <span style="font-weight:400;font-size:0.75rem;color:var(--gray-500);">(requires 6-digit Level-2 password)</span></h3>
+                    <p style="color:var(--gray-500);font-size:0.8rem;margin-bottom:12px;">Backup, restore, or permanently reset all data. Every action below re-asks for the Level-2 password.</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                        <button class="btn btn-success" onclick="requireAdmin2(exportBackupData)">📤 Export Data (Backup)</button>
+                        <button class="btn btn-outline" onclick="requireAdmin2(triggerRestoreFilePicker)">📥 Import Data (Restore)</button>
+                        <button class="btn btn-outline" onclick="requireAdmin2(renderChangeAdminPin2Modal)">🔑 Change Level-2 Password</button>
+                    </div>
+                    <button class="btn btn-danger" onclick="requireAdmin2(confirmResetAllData)">🗑️ Reset All Data</button>
+                </div>
+            `;
+            renderAdminEmployeeList();
+            renderAdminReport();
+        }
+
+        function submitAdminTabPin() {
+            const inp = document.getElementById('adminTabPin');
+            const val = inp ? inp.value.trim() : '';
+            if (val && val === settingsCache.adminPin) {
+                adminUnlocked = true;
+                showToast('🔓 Admin unlocked', 'success');
+                renderAdminSection();
+            } else {
+                showToast('❌ Incorrect PIN', 'error');
+            }
+        }
+
+        function renderAdminEmployeeList() {
+            const container = document.getElementById('adminEmployeeList');
+            if (!container) return;
+            const employees = getEmployees();
+            container.innerHTML = employees.map(emp => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray-100);gap:8px;flex-wrap:wrap;">
+                    <span style="font-weight:600;">${emp.name}</span>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select onchange="changeEmployeeRole('${emp.id}', this.value)" style="padding:6px;border:1px solid var(--gray-200);border-radius:6px;font-size:0.8rem;">
+                            <option value="staff" ${getEmployeeRole(emp) === 'staff' ? 'selected' : ''}>Staff</option>
+                            <option value="supervisor" ${getEmployeeRole(emp) === 'supervisor' ? 'selected' : ''}>Shift Supervisor</option>
+                            <option value="manager" ${getEmployeeRole(emp) === 'manager' ? 'selected' : ''}>Manager</option>
+                        </select>
+                        <button class="btn btn-outline" style="padding:6px 10px;font-size:0.78rem;" onclick="renderEditHoursView('${emp.id}')">✏️ Edit Hours</button>
+                        <button class="btn btn-danger" style="padding:6px 10px;font-size:0.78rem;" onclick="confirmDeleteEmployee('${emp.id}', '${emp.name.replace(/'/g, "\\'")}')">🗑️ Delete</button>
+                    </div>
+                </div>
+            `).join('') || '<p style="color:var(--gray-400);font-size:0.85rem;">No employees yet</p>';
+        }
+
+        function changeEmployeeRole(employeeId, role) {
+            const employees = getEmployees();
+            const emp = employees.find(e => e.id === employeeId);
+            if (!emp) return;
+            emp.role = (role === 'supervisor' || role === 'manager') ? role : 'staff';
+            saveData(employees);
+            showToast('✅ Role updated', 'success');
+            renderAdminReport();
+        }
+
+        // ---------- Pay rate & PIN settings ----------
+        function openRateSettingsModal() {
+            requireAdmin(() => renderRateSettingsModal());
+        }
+
+        function renderRateSettingsModal() {
+            const r = settingsCache.rates;
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <h3 style="text-align:center;">💵 Hourly Pay Rate Settings</h3>
+                <div style="margin-top:12px;">
+                    <p style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">👔 Shift Supervisor</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekday</label><input type="number" step="0.01" min="0" id="rate_sup_weekday" value="${r.supervisor.weekday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekend</label><input type="number" step="0.01" min="0" id="rate_sup_weekend" value="${r.supervisor.weekend}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">PH</label><input type="number" step="0.01" min="0" id="rate_sup_ph" value="${r.supervisor.publicHoliday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                    </div>
+                    <p style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">🧑‍💼 Manager</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekday</label><input type="number" step="0.01" min="0" id="rate_mgr_weekday" value="${r.manager.weekday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekend</label><input type="number" step="0.01" min="0" id="rate_mgr_weekend" value="${r.manager.weekend}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">PH</label><input type="number" step="0.01" min="0" id="rate_mgr_ph" value="${r.manager.publicHoliday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                    </div>
+                    <p style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">🧑‍🍳 Staff</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;">
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekday</label><input type="number" step="0.01" min="0" id="rate_staff_weekday" value="${r.staff.weekday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">Weekend</label><input type="number" step="0.01" min="0" id="rate_staff_weekend" value="${r.staff.weekend}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                        <div><label style="font-size:0.7rem;color:var(--gray-500);">PH</label><input type="number" step="0.01" min="0" id="rate_staff_ph" value="${r.staff.publicHoliday}" style="width:100%;padding:6px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;"></div>
+                    </div>
+                </div>
+                <div style="border-top:1px solid var(--gray-100);margin-top:10px;padding-top:12px;">
+                    <label style="font-size:0.8rem;font-weight:700;">🔐 Change Admin PIN</label>
+                    <input type="password" inputmode="numeric" id="newAdminPin" maxlength="6" placeholder="New PIN (leave blank to keep current)" style="width:100%;padding:8px;border:1px solid var(--gray-200);border-radius:6px;margin-top:6px;box-sizing:border-box;">
+                </div>
+                <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-top:16px;" onclick="saveRateSettings()">💾 Save Settings</button>
+            `;
+            openModal(html);
+        }
+
+        function saveRateSettings() {
+            settingsCache.rates.supervisor = {
+                weekday: parseFloat(document.getElementById('rate_sup_weekday').value) || 0,
+                weekend: parseFloat(document.getElementById('rate_sup_weekend').value) || 0,
+                publicHoliday: parseFloat(document.getElementById('rate_sup_ph').value) || 0,
+            };
+            settingsCache.rates.manager = {
+                weekday: parseFloat(document.getElementById('rate_mgr_weekday').value) || 0,
+                weekend: parseFloat(document.getElementById('rate_mgr_weekend').value) || 0,
+                publicHoliday: parseFloat(document.getElementById('rate_mgr_ph').value) || 0,
+            };
+            settingsCache.rates.staff = {
+                weekday: parseFloat(document.getElementById('rate_staff_weekday').value) || 0,
+                weekend: parseFloat(document.getElementById('rate_staff_weekend').value) || 0,
+                publicHoliday: parseFloat(document.getElementById('rate_staff_ph').value) || 0,
+            };
+            const newPin = document.getElementById('newAdminPin').value.trim();
+            if (newPin) {
+                if (newPin.length < 4) { showToast('⚠️ PIN must be at least 4 digits', 'error'); return; }
+                settingsCache.adminPin = newPin;
+            }
+            saveSettings();
+            closeModal();
+            showToast('✅ Settings saved', 'success');
+            renderAdminReport();
+        }
+
+        // ---------- Public holiday management ----------
+        function openPublicHolidayModal() {
+            requireAdmin(() => renderPublicHolidayModal());
+        }
+
+        function renderPublicHolidayModal() {
+            const list = (settingsCache.publicHolidays || []).slice().sort();
+            const rows = list.map(d => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--gray-100);">
+                    <span>${d}</span>
+                    <button class="btn btn-danger" style="padding:4px 8px;font-size:0.75rem;" onclick="removePublicHoliday('${d}')">Delete</button>
+                </div>
+            `).join('') || '<p style="color:var(--gray-400);font-size:0.85rem;">No public holidays yet</p>';
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <h3 style="text-align:center;">🎉 Public Holidays</h3>
+                <div style="display:flex;gap:8px;margin:14px 0;">
+                    <input type="date" id="newPhDate" style="flex:1;padding:8px;border:1px solid var(--gray-200);border-radius:6px;">
+                    <button class="btn btn-primary" onclick="addPublicHoliday()">➕ Add</button>
+                </div>
+                <div style="max-height:260px;overflow-y:auto;">${rows}</div>
+                <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:14px;" onclick="closeModal()">Close</button>
+            `;
+            openModal(html);
+        }
+
+        function addPublicHoliday() {
+            const val = document.getElementById('newPhDate').value;
+            if (!val) return;
+            if (!settingsCache.publicHolidays.includes(val)) {
+                settingsCache.publicHolidays.push(val);
+                saveSettings();
+                showToast('✅ Public holiday added', 'success');
+            }
+            renderPublicHolidayModal();
+            renderAdminReport();
+        }
+
+        function removePublicHoliday(dateStr) {
+            settingsCache.publicHolidays = settingsCache.publicHolidays.filter(d => d !== dateStr);
+            saveSettings();
+            renderPublicHolidayModal();
+            renderAdminReport();
+        }
+
+        // ---------- Revenue entry ----------
+        function openRevenueModal(presetType, presetLabel) {
+            requireAdmin(() => renderRevenueModal(presetType, presetLabel));
+        }
+
+        function renderRevenueModal(presetType, presetLabel) {
+            presetType = presetType === 'month' ? 'month' : 'week';
+            const existing = presetLabel ? settingsCache.revenueEntries.find(r => r.type === presetType && r.label === presetLabel) : null;
+            const list = settingsCache.revenueEntries.slice().sort((a, b) => b.label.localeCompare(a.label));
+            const rows = list.map(r => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:0.8rem;gap:6px;">
+                    <span>${r.type === 'week' ? '📅 Week ' : '🗓️ Month '}${r.label}</span>
+                    <span style="font-weight:700;">$${Number(r.amount).toLocaleString()}</span>
+                    <button class="btn btn-danger" style="padding:3px 8px;font-size:0.72rem;" onclick="removeRevenueEntry('${r.type}','${r.label}')">Delete</button>
+                </div>
+            `).join('') || '<p style="color:var(--gray-400);font-size:0.85rem;">No revenue data yet</p>';
+
+            const html = `
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <h3 style="text-align:center;">💰 Enter Revenue</h3>
+                <div style="margin:14px 0;">
+                    <div style="display:flex;gap:8px;margin-bottom:8px;">
+                        <select id="revType" onchange="onRevenueTypeChange()" style="padding:8px;border:1px solid var(--gray-200);border-radius:6px;">
+                            <option value="week" ${presetType === 'week' ? 'selected' : ''}>By Week</option>
+                            <option value="month" ${presetType === 'month' ? 'selected' : ''}>By Month</option>
+                        </select>
+                        <input type="${presetType === 'week' ? 'week' : 'month'}" id="revPeriodInput" value="${presetLabel || ''}" style="flex:1;padding:8px;border:1px solid var(--gray-200);border-radius:6px;">
+                    </div>
+                    <input type="number" step="0.01" min="0" id="revAmount" placeholder="Revenue ($)" value="${existing ? existing.amount : ''}" style="width:100%;padding:8px;border:1px solid var(--gray-200);border-radius:6px;box-sizing:border-box;">
+                    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:10px;" onclick="saveRevenueEntry()">💾 Save</button>
+                </div>
+                <div style="max-height:220px;overflow-y:auto;border-top:1px solid var(--gray-100);padding-top:8px;">${rows}</div>
+            `;
+            openModal(html);
+        }
+
+        function onRevenueTypeChange() {
+            const type = document.getElementById('revType').value;
+            const input = document.getElementById('revPeriodInput');
+            input.type = type === 'week' ? 'week' : 'month';
+            input.value = '';
+        }
+
+        function saveRevenueEntry() {
+            const type = document.getElementById('revType').value;
+            const label = document.getElementById('revPeriodInput').value;
+            const amount = parseFloat(document.getElementById('revAmount').value);
+            if (!label || isNaN(amount) || amount < 0) {
+                showToast('⚠️ Please fill in all fields', 'error');
+                return;
+            }
+            settingsCache.revenueEntries = settingsCache.revenueEntries.filter(r => !(r.type === type && r.label === label));
+            settingsCache.revenueEntries.push({ type, label, amount });
+            saveSettings();
+            showToast('✅ Revenue saved', 'success');
+            renderRevenueModal(type, label);
+            renderAdminReport();
+        }
+
+        function removeRevenueEntry(type, label) {
+            settingsCache.revenueEntries = settingsCache.revenueEntries.filter(r => !(r.type === type && r.label === label));
+            saveSettings();
+            renderRevenueModal(type, null);
+            renderAdminReport();
+        }
+
+        // ---------- Hours & wage report ----------
+        function onReportPeriodTypeChange() {
+            const type = document.getElementById('reportPeriodType').value;
+            const input = document.getElementById('reportDateInput');
+            input.type = type === 'day' ? 'date' : (type === 'week' ? 'week' : 'month');
+            input.value = '';
+            document.getElementById('adminReportResult').innerHTML = '';
+        }
+
+        function renderAdminReport() {
+            const typeEl = document.getElementById('reportPeriodType');
+            const dateEl = document.getElementById('reportDateInput');
+            const resultEl = document.getElementById('adminReportResult');
+            if (!typeEl || !dateEl || !resultEl) return;
+
+            const periodType = typeEl.value;
+            const val = dateEl.value;
+            if (!val) { resultEl.innerHTML = ''; return; }
+
+            let range, periodLabel;
+            if (periodType === 'day') {
+                range = { start: val, end: val };
+                periodLabel = val;
+            } else if (periodType === 'week') {
+                range = isoWeekToRange(val);
+                periodLabel = val;
+            } else {
+                range = monthToRange(val);
+                periodLabel = val;
+            }
+
+            const employees = getEmployees();
+            let totalWage = 0;
+            const rows = employees.map(emp => {
+                const stats = computeEmployeeStats(emp, range);
+                const wage = computeEmployeeWage(emp, stats);
+                totalWage += wage;
+                return `
+                    <tr>
+                        <td style="text-align:left;font-weight:600;">${emp.name}<br><span style="font-size:0.68rem;color:var(--gray-400);">${getRoleLabel(getEmployeeRole(emp))}</span></td>
+                        <td>${formatHoursDecimal(stats.weekdayMin)}</td>
+                        <td>${formatHoursDecimal(stats.weekendMin)}</td>
+                        <td>${formatHoursDecimal(stats.phMin)}</td>
+                        <td style="font-weight:700;">${formatHoursDecimal(stats.totalMin)}</td>
+                        <td style="font-weight:700;">$${wage.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="6" style="color:var(--gray-400);">No employees yet</td></tr>';
+
+            const totalWithSuper = totalWage * 1.12;
+
+            let revenueHtml = '';
+            if (periodType !== 'day') {
+                const rev = settingsCache.revenueEntries.find(r => r.type === periodType && r.label === periodLabel);
+                if (rev) {
+                    const pct = rev.amount > 0 ? (totalWithSuper / rev.amount * 100) : 0;
+                    revenueHtml = `
+                        <div class="weekly-summary-cards" style="margin-top:14px;">
+                            <div class="summary-card total">
+                                <div class="label">💰 Revenue this period</div>
+                                <div class="value">$${Number(rev.amount).toLocaleString()}</div>
+                            </div>
+                            <div class="summary-card sat">
+                                <div class="label">👥 Labour (wages + 12% super)</div>
+                                <div class="value">$${totalWithSuper.toFixed(2)}</div>
+                            </div>
+                            <div class="summary-card sun">
+                                <div class="label">📊 Labour % / Revenue</div>
+                                <div class="value">${pct.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    revenueHtml = `
+                        <div style="background:var(--warning-light);padding:10px 12px;border-radius:8px;font-size:0.8rem;color:#92400e;margin-top:12px;">
+                            ⚠️ No revenue entered for period ${periodLabel}.
+                            <a href="#" onclick="event.preventDefault();openRevenueModal('${periodType}','${periodLabel}')" style="color:#92400e;text-decoration:underline;">Enter now</a>
+                        </div>
+                    `;
+                }
+            }
+
+            resultEl.innerHTML = `
+                <table class="weekly-table" style="margin-top:14px;">
+                    <thead><tr><th style="text-align:left;">Employee</th><th>Weekday</th><th>Weekend</th><th>PH</th><th>Total Hours</th><th>Wage</th></tr></thead>
+                    <tbody>
+                        ${rows}
+                        <tr class="total-row"><td style="text-align:left;">TOTAL</td><td colspan="3"></td><td></td><td>$${totalWage.toFixed(2)}</td></tr>
+                    </tbody>
+                </table>
+                ${revenueHtml}
+            `;
+        }
+
+        function switchTab(tabName) {
+            const dashboardSection = document.getElementById('dashboard-section');
+            const addSection = document.getElementById('add-section');
+            const adminSection = document.getElementById('admin-section');
+            const tabDashboard = document.getElementById('tab-dashboard');
+            const tabAdd = document.getElementById('tab-add');
+            const tabAdmin = document.getElementById('tab-admin');
+
+            dashboardSection.style.display = 'none';
+            addSection.style.display = 'none';
+            adminSection.style.display = 'none';
+            tabDashboard.classList.remove('active');
+            tabAdd.classList.remove('active');
+            tabAdmin.classList.remove('active');
+
+            if (tabName === 'dashboard') {
+                dashboardSection.style.display = 'block';
+                tabDashboard.classList.add('active');
+                renderDashboard();
+            } else if (tabName === 'add') {
+                addSection.style.display = 'block';
+                tabAdd.classList.add('active');
+                renderEmployeeListMini();
+                document.getElementById('empName').focus();
+            } else if (tabName === 'admin') {
+                adminSection.style.display = 'block';
+                tabAdmin.classList.add('active');
+                renderAdminSection();
+            }
+        }
+
+        // ===================== AUTO REFRESH CLOCK =====================
+        function startAutoRefresh() {
+            setInterval(() => {
+                // Refresh dashboard statuses and clock displays
+                const clockTime = document.querySelector('.clock-display .time');
+                if (clockTime) {
+                    clockTime.textContent = getCurrentTime();
+                }
+                // Refresh dashboard every 30 seconds
+                const now = new Date();
+                if (now.getSeconds() === 0 || now.getSeconds() === 30) {
+                    renderDashboard();
+                }
+            }, 1000);
+        }
+
+        // ===================== INITIALIZATION =====================
+        let appStarted = false;
+        function init() {
+            renderDashboard();
+            renderEmployeeListMini();
+            if (appStarted) return;
+            appStarted = true;
+            startAutoRefresh();
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+                if (e.key === 'd' && e.ctrlKey) {
+                    e.preventDefault();
+                    switchTab('dashboard');
+                }
+            });
+        }
+
+        // App now starts from the Firestore onSnapshot listener above,
+        // once the first snapshot (local cache or server) arrives.
+    </script>
+</body>
+</html>
